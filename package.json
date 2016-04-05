@@ -1,0 +1,38 @@
+{
+  "name": "blah",
+  "version": "0.0.3",
+  "description": "Utility class to manage and execute tasks",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "scripts": {
+    "test": "node ./node_modules/mocha/bin/mocha --recursive"
+  },
+  "author": {
+    "name": "p7s1"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "mongoose": "*"
+  },
+  "devDependencies": {
+    "co-famo": "git://github.com/p7s1-ctf/co-famo.git",
+    "co-mocha": "^1.1.2",
+    "mocha": "^2.4.5",
+    "nock": "^7.0.2",
+    "sinon": "^1.17.3"
+  },
+  "gitHead": "f972914348bb6546e96e4099d317e77fb4b2e5bb",
+  "readme": "# Task Manager \n\nTaskManager is an abstraction to support multiple features:  \n *   manage tasks\n *   execute tasks\n *   schedule tasks execution\n *   repeat tasks execution\n\nThere 2 layers of abstraction over the task:\n *   Task Manager\n *   Task Group\n\n### TaskManager API\n *   `createGroup(options)` - provides possibility to create highly customized Task Group via options  \n *   `getGroup(groupId)` - create or return created group from DB \n *   `removeGroup(groupId)` - remove specified group \n *   `removeAll()` - remove all groups and scheduled tasks \n \nThis methods are available for adding repeating or scheduled tasks and should be used only for workers  \n *   `schedule(tasks, date)` - schedule a list of tasks to be executed after some periods \n *   `repeat(groupName, tasks, time)` - define a list of repeated tasks\n *   `start()` - start execution tasks \n *   `stop()` - stop execution tasks\n\n### TaskGroup API\n *   `addTask(task)` - add task to \n *   `getTask(taskId)` - return task data\n *   `removeTask(taskId)` - remove some task with specified tasksId\n *   `getId()` - retrieve id of the TaskGroup\n\n## Specifications for tasks groups\nIf it requires to create a separate specification with unique business logic extra spec can be specified. \nIn order to do this you can create a fully independent spec file and place it in `./lib/specs` folder of `task-manager`.\nThe simplest solution is to extend from default Queue spec and modify `addTask` and `prepareDara` methods to add custom behavior or/and new logic  \nTo use this specification there're two possible flows:\n - use `TaskManager.createGroup` method and pass `spec` option. Example: `yield TaskManager.createGroup({spec: 'myFancySpec'})`\n - use `defaultSpec` option during TaskManager creation `new TaskManager({ pathToTasks: 'tasks', scanInterval: 10, spec: 'myFancySpec' })`. This will make tasks groups to use specified spec as default instead default `queue`  \n\n##Examples:\n\n####Unique Queue spec example \n\n```javascript\nclass UniqueQueueSpec extends QueueSpec {\n    /**\n     * Add only unique tasks\n     * @param task\n     * @returns {UniqueQueueSpec}\n     */\n    * addTask(task) {\n        QueueSpec.validateTaskData(task);\n        /* Only unique tasks can be added */\n        let updateOpts = {\n            setDefaultsOnInsert: true,\n            upsert: false,\n            new: true\n        };\n\n        yield this.updateQueue({\n            groupId: this.getId(),\n            'tasks.taskId': {$ne: task.taskId},\n            'tasks.taskType': {$ne: task.taskType},\n            'tasks.data': {$ne: task.data}\n        }, {\n            $addToSet: {\n                tasks: task\n            }\n        }, updateOpts);\n\n        return this;\n    }\n}\n\nmodule.exports = UniqueQueueSpec;\n```\n\n####myController.js\n```javascript\n/// *** some code\nlet db = mongoose.connect('some_db'); // init DB connection to the Queue collection\nlet TaskManager = require('task-manager')(); //init Tasks Manager\nlet data = {\n    url: 'some_url', // Url to notify\n    operation: { } // Some data to send\n};\n\nlet data2 = {\n    url: 'another_url', // Url to notify\n    operation: { } // Some data to send\n};\nlet transactionId = uuid.v4(); //some unique value\n// Now we add a new task to notify\n// If no task group exists with such unique id as transactionId new group will be created with id same as passed\nlet taskGroup = yield TaskManager.getGroup(transactionId);\n// Add new task to task group\nyield taskGroup.addTask({ taskType: 'request', data: data});\n// Add another task to the same task group\nyield taskGroup.addTask({ taskType: 'request', data: data2});\n// *** some code\n```\n\n####myRunner.js\n```javascript\nlet db = mongoose.connect('some_db'); // init DB connection to the Queue collection\nlet TaskManager = require('task-manager')(); //init Tasks Manager\n\nTaskManager.start(); // start tasks execution\n```\n\n####myWorkersList.js\n```javascript\nlet db = mongoose.connect('some_db'); // init DB connection to the Queue collection\nlet TaskManager = require('task-manager')(); //init Tasks Manager\n\nlet data = {\n    //some data for task\n};\n// Add some repeatable task that should continuously repeat every 10 minutes \nlet repeatEvery = 10 * 60 * 1000;\nyield TaskManager.repeat('testRepeatedGroup', { taskId: 'testRepeatedTask', taskType: 'request', data: data}, repeatTime); // task will repeat every 10 minutes\n\n// Add a new task that should be executed after 5 minutes after the application start\nlet scheduledDate = Date.now() + 5*60*1000; // calculate execution Date\nyield TaskManager.schedule({ taskType: 'request', data: data2}, scheduledDate); \n```\n\n",
+  "readmeFilename": "README.md",
+  "bugs": {
+    "url": "https://github.com/p7s1-ctf/task-manager/issues"
+  },
+  "homepage": "https://github.com/p7s1-ctf/task-manager#readme",
+  "_id": "task-manager@0.0.3",
+  "_shasum": "59cc92c445b82c8f6ec8d0d6a21f907f87983892",
+  "_from": "git+ssh://git@github.com/p7s1-ctf/task-manager.git",
+  "_resolved": "git+ssh://git@github.com/p7s1-ctf/task-manager.git#f972914348bb6546e96e4099d317e77fb4b2e5bb"
+}
